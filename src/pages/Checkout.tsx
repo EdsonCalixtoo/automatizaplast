@@ -145,11 +145,12 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
-      // 3. Tentar enviar e-mail mas não travar o fluxo se falhar (CORS / API Key)
+      // 3. O e-mail agora é disparado automaticamente pelo Banco de Dados (SQL Trigger)
       try {
-        await sendOrderEmail(orderData);
+        const emailResult = await sendOrderEmail(orderData);
+        console.log(emailResult.message);
       } catch (err) {
-        console.warn("E-mail não pôde ser enviado via Navegador (CORS):", err);
+        console.warn("Aviso: Falha ao registrar log de e-mail:", err);
       }
 
       setOrderDetails(orderData);
