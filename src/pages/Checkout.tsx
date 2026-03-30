@@ -124,12 +124,14 @@ const Checkout = () => {
     };
 
     try {
+      // 1. Salvar Pedido no Supabase
       const { error: orderError } = await supabase
         .from('orders')
         .insert([orderData]);
 
       if (orderError) throw orderError;
 
+      // 2. Salvar Itens do Pedido
       const itemsToInsert = cart.map(item => ({
         order_id: orderId,
         product_name: item.name,
@@ -143,16 +145,20 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
-      // Real email attempt
-      await sendOrderEmail(orderData);
+      // 3. Tentar enviar e-mail mas não travar o fluxo se falhar (CORS / API Key)
+      try {
+        await sendOrderEmail(orderData);
+      } catch (err) {
+        console.warn("E-mail não pôde ser enviado via Navegador (CORS):", err);
+      }
 
       setOrderDetails(orderData);
       setOrderPlaced(true);
       clearCart();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error: any) {
-      console.error("Erro ao processar pedido:", error);
-      alert("Houve um erro ao processar seu pedido: " + (error.message || "Erro desconhecido"));
+      console.error("Erro no processamento:", error);
+      alert("Erro ao processar banco de dados: " + (error.message || "Verifique se as tabelas foram criadas"));
     } finally {
       setLoading(false);
     }

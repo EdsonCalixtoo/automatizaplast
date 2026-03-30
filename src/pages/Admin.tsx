@@ -117,17 +117,17 @@ const Admin = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const itemsHtml = order.items.map((item: any) => `
+    const itemsHtml = (order.order_items || []).map((item: any) => `
       <tr style="border-bottom: 1px solid #eee;">
-        <td style="padding: 12px 0;">${item.name}</td>
-        <td style="padding: 12px 0; text-align: center;">${item.qty}</td>
+        <td style="padding: 12px 0;">${item.product_name}</td>
+        <td style="padding: 12px 0; text-align: center;">${item.quantity}</td>
         <td style="padding: 12px 0; text-align: right;">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price)}</td>
       </tr>
     `).join('');
 
-    const paymentInfo = order.paymentMethod === 'pix' 
-      ? `PIX - Transação: ${order.transactionId}`
-      : `Cartão de Crédito (Final: ${order.cardLast4 || '****'})`;
+    const paymentInfo = order.payment_method === 'pix' 
+      ? `PIX - Transação: ${order.transaction_id}`
+      : `Cartão de Crédito (Final: ${order.card_last_4 || '****'})`;
 
     printWindow.document.write(`
       <html>
@@ -159,15 +159,15 @@ const Admin = () => {
           <div class="info-grid">
             <div class="info-box">
               <h4>Dados do Cliente</h4>
-              <p>${order.client}</p>
-              <p>${order.email}</p>
-              <p>${order.phone}</p>
-              <p>CPF/CNPJ: ${order.cpf}</p>
+              <p>${order.client_name}</p>
+              <p>${order.client_email}</p>
+              <p>${order.client_phone}</p>
+              <p>CPF/CNPJ: ${order.client_cpf}</p>
             </div>
             <div class="info-box">
               <h4>Informações do Pedido</h4>
-              <p>Data da Compra: ${order.date}</p>
-              <p>Status: ${order.status}</p>
+              <p>Data da Compra: ${new Date(order.created_at).toLocaleDateString()}</p>
+              <p>Status: ${order.status || 'Pagamento Aprovado'}</p>
             </div>
           </div>
 
@@ -197,7 +197,7 @@ const Admin = () => {
 
           <div class="total">
             <span style="font-size: 12px; color: #64748b; font-weight: normal; margin-right: 20px;">VALOR TOTAL DO PEDIDO</span>
-            ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.price)}
+            ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_price)}
           </div>
 
           <div class="footer">
@@ -367,20 +367,22 @@ const Admin = () => {
                          <td className="px-8 py-6 font-bold text-sm">{order.id}</td>
                          <td className="px-8 py-6">
                            <div className="flex flex-col">
-                             <span className="font-bold text-sm">{order.client}</span>
-                             <span className="text-[10px] text-muted-foreground">{order.time}</span>
+                             <span className="font-bold text-sm">{order.client_name}</span>
+                             <span className="text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</span>
                            </div>
                          </td>
-                         <td className="px-8 py-6 text-sm text-slate-600">{order.items[0].name}</td>
+                         <td className="px-8 py-6 text-sm text-slate-600 truncate max-w-[200px]">
+                            {order.order_items?.[0]?.product_name || "Kit Personalizado"}
+                         </td>
                          <td className="px-8 py-6">
                             <span className={`text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${
                               order.status === 'Concluído' ? 'bg-emerald-100 text-emerald-600' : 
                               order.status === 'Em processamento' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'
                             }`}>
-                              {order.status}
+                              {order.status || 'Pagamento Aprovado'}
                             </span>
                          </td>
-                         <td className="px-8 py-6 font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.price)}</td>
+                         <td className="px-8 py-6 font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_price)}</td>
                          <td className="px-8 py-6">
                             <button 
                               onClick={() => setSelectedOrder(order)}
@@ -558,34 +560,34 @@ const Admin = () => {
                       <div className="space-y-6">
                          <div className="space-y-1">
                             <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Cliente</h4>
-                            <p className="font-bold text-sm text-[#0a1e36]">{selectedOrder.client}</p>
-                            <p className="text-xs text-slate-500">{selectedOrder.email}</p>
-                            <p className="text-xs text-slate-500">{selectedOrder.phone}</p>
+                            <p className="font-bold text-sm text-[#0a1e36]">{selectedOrder.client_name}</p>
+                            <p className="text-xs text-slate-500">{selectedOrder.client_email}</p>
+                            <p className="text-xs text-slate-500">{selectedOrder.client_phone}</p>
                          </div>
                          <div className="space-y-1">
                             <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Documento</h4>
-                            <p className="font-bold text-sm text-[#0a1e36]">{selectedOrder.cpf}</p>
+                            <p className="font-bold text-sm text-[#0a1e36]">{selectedOrder.client_cpf}</p>
                          </div>
                       </div>
                       <div className="space-y-6 text-right">
                          <div className="space-y-1 text-right">
                             <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Transação / Pagamento</h4>
-                            <p className="font-bold text-sm text-[#0a1e36]">{selectedOrder.transactionId}</p>
+                            <p className="font-bold text-sm text-[#0a1e36]">{selectedOrder.transaction_id}</p>
                             <div className="mt-2 flex flex-col items-end gap-1">
                                <div className="flex items-center gap-2">
-                                  <span className={`text-[9px] font-black px-2 py-1 rounded uppercase tracking-widest ${selectedOrder.paymentMethod === 'pix' ? 'bg-[#25D366]/10 text-[#25D366]' : 'bg-primary/10 text-primary'}`}>
-                                    {selectedOrder.paymentMethod === 'pix' ? 'PIX' : 'Cartão'}
+                                  <span className={`text-[9px] font-black px-2 py-1 rounded uppercase tracking-widest ${selectedOrder.payment_method === 'pix' ? 'bg-[#25D366]/10 text-[#25D366]' : 'bg-primary/10 text-primary'}`}>
+                                    {selectedOrder.payment_method === 'pix' ? 'PIX' : 'Cartão'}
                                   </span>
-                                  {selectedOrder.paymentMethod === 'cartao' && (
-                                    <span className="text-xs font-bold text-slate-400">•••• {selectedOrder.cardLast4}</span>
+                                  {selectedOrder.payment_method === 'cartao' && (
+                                    <span className="text-xs font-bold text-slate-400">•••• {selectedOrder.card_last_4}</span>
                                   )}
                                </div>
-                               <p className="text-[10px] text-slate-400 font-medium">Data: {selectedOrder.date}</p>
+                               <p className="text-[10px] text-slate-400 font-medium">Data: {new Date(selectedOrder.created_at).toLocaleDateString()}</p>
                             </div>
                          </div>
                          <div className="space-y-1">
                             <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</h4>
-                            <span className="text-[10px] font-black bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full uppercase">{selectedOrder.status}</span>
+                            <span className="text-[10px] font-black bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full uppercase">{selectedOrder.status || 'Pagamento Aprovado'}</span>
                          </div>
                       </div>
                    </div>
@@ -598,11 +600,11 @@ const Admin = () => {
                    <div className="space-y-6 mb-10">
                       <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Itens Comprados</h4>
                       <div className="space-y-4">
-                        {selectedOrder.items.map((item: any, i: number) => (
+                        {(selectedOrder.order_items || []).map((item: any, i: number) => (
                           <div key={i} className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl">
                              <div className="flex items-center gap-4">
-                                <span className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center font-bold text-xs">{item.qty}x</span>
-                                <span className="font-bold text-sm">{item.name}</span>
+                                <span className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center font-bold text-xs">{item.quantity}x</span>
+                                <span className="font-bold text-sm">{item.product_name}</span>
                              </div>
                              <span className="font-black text-sm">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price)}</span>
                           </div>
@@ -613,7 +615,7 @@ const Admin = () => {
                    <div className="bg-[#0a1e36] p-8 rounded-[40px] text-white flex items-center justify-between">
                       <div className="flex flex-col">
                          <span className="text-[10px] font-black uppercase tracking-widest text-primary">Total Pago</span>
-                         <span className="text-3xl font-black" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedOrder.price)}</span>
+                         <span className="text-3xl font-black" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedOrder.total_price)}</span>
                       </div>
                       <button 
                         onClick={() => handlePrintNota(selectedOrder)}
