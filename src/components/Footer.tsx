@@ -56,7 +56,7 @@ const Footer = () => (
                   <MessageCircle className="w-5 h-5 text-primary group-hover:text-white" />
                 </div>
                 <div>
-                  <p className="font-black text-[#0a1e36] text-lg leading-tight uppercase tracking-tighter" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>(19) 98398-6895</p>
+                  <p className="font-bold text-[#0a1e36] text-lg leading-tight uppercase tracking-tighter" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>(19) 98398-6895</p>
                   <p className="text-[10px] font-bold uppercase tracking-widest">WhatsApp disponível</p>
                 </div>
               </a>
@@ -67,7 +67,7 @@ const Footer = () => (
                   <Phone className="w-5 h-5 text-primary group-hover:text-white" />
                 </div>
                 <div>
-                  <p className="font-black text-[#0a1e36] text-lg leading-tight uppercase tracking-tighter" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>(19) 98398-6895</p>
+                  <p className="font-bold text-[#0a1e36] text-lg leading-tight uppercase tracking-tighter" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>(19) 98398-6895</p>
                   <p className="text-[10px] font-bold uppercase tracking-widest">Atendimento Comercial</p>
                 </div>
               </a>
