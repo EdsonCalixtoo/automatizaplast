@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronLeft, ShoppingBag, CreditCard, Truck, Send, ShieldCheck, MapPin, Phone, CheckCircle2, Copy, Check } from "lucide-react";
+import { ChevronLeft, ShoppingBag, CreditCard, Truck, Send, ShieldCheck, MapPin, Phone, CheckCircle2, Copy, Check, Loader2 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,12 @@ import Footer from "@/components/Footer";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
+
+declare global {
+  interface Window {
+    MercadoPago: any;
+  }
+}
 
 interface OrderData {
   id: string;
@@ -37,6 +43,8 @@ const Checkout = () => {
   const [loading, setLoading] = useState(false);
   const [pixData, setPixData] = useState<{ qr_code: string; qr_code_base64: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [mp, setMp] = useState<any>(null);
+  const [cardBrickController, setCardBrickController] = useState<any>(null);
   
   const [formData, setFormData] = useState({
     nome: "",
@@ -50,8 +58,63 @@ const Checkout = () => {
     cidade: "",
     uf: "",
     entrega: "entrega",
-    pagamento: "mercadopago"
+    pagamento: "cartao"
   });
+
+  // Initialize Mercado Pago
+  useEffect(() => {
+    const publicKey = import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY;
+    if (publicKey && window.MercadoPago) {
+      const mpInstance = new window.MercadoPago(publicKey, { locale: 'pt-BR' });
+      setMp(mpInstance);
+    }
+  }, []);
+
+  // Initialize Card Brick
+  useEffect(() => {
+    if (mp && formData.pagamento === 'cartao' && !cardBrickController && !orderPlaced) {
+      const renderCardBrick = async () => {
+        const bricksBuilder = mp.bricks();
+        const settings = {
+          initialization: {
+            amount: safeTotalPrice,
+            payer: {
+              email: formData.email,
+            },
+          },
+          customization: {
+            visual: {
+              style: {
+                theme: 'flat',
+                customVariables: {
+                  borderRadius: '20px',
+                  inputBackgroundColor: '#f8fafc',
+                }
+              }
+            },
+            paymentMethods: {
+              maxInstallments: 12,
+            }
+          },
+          callbacks: {
+            onReady: () => {
+              console.log('Brick ready');
+            },
+            onSubmit: (cardFormData: any) => {
+              return processCardPayment(cardFormData);
+            },
+            onError: (error: any) => {
+              console.error('Brick error', error);
+              toast.error("Erro ao carregar formulário de cartão");
+            },
+          },
+        };
+        const controller = await bricksBuilder.create('cardPayment', 'cardPaymentBrick_container', settings);
+        setCardBrickController(controller);
+      };
+      renderCardBrick();
+    }
+  }, [mp, formData.pagamento, orderPlaced]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -110,16 +173,12 @@ const Checkout = () => {
     }
   };
 
-  const handlePurchase = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const processCardPayment = async (cardFormData: any) => {
     setLoading(true);
-
     const orderId = `#${Math.floor(100000 + Math.random() * 900000)}`;
     const fullAddress = formData.entrega === 'retirada' 
       ? "Retirada em Loja - Campinas/SP" 
       : `${formData.rua}, ${formData.numero} - ${formData.bairro}, ${formData.cidade} - ${formData.uf}`;
-    
-    const finalPrice = safeTotalPrice;
 
     const orderData: OrderData = {
       id: orderId,
@@ -128,77 +187,115 @@ const Checkout = () => {
       client_phone: formData.telefone,
       client_cpf: formData.cpf,
       address: fullAddress,
-      total_price: finalPrice,
-      payment_method: formData.pagamento === 'mercadopago' ? 'Mercado Pago (Cartão/Outros)' : 'PIX Mercado Pago',
-      transaction_id: `AUTO-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+      total_price: safeTotalPrice,
+      payment_method: 'Cartão de Crédito',
+      transaction_id: `AUTO-CARD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
       status: 'Aguardando Pagamento'
     };
 
-
     try {
-      // 1. Salvar Pedido no Supabase
-      const { error: orderError } = await supabase
-        .from('orders')
-        .insert([orderData]);
-
-      if (orderError) throw orderError;
-
-      // 2. Salvar Itens do Pedido
+      // 1. Salvar no Banco
+      await supabase.from('orders').insert([orderData]);
       const itemsToInsert = cart.map(item => ({
         order_id: orderId,
         product_name: item.name,
         quantity: item.quantity,
         price: typeof item.price === 'number' ? item.price : 3300
       }));
+      await supabase.from('order_items').insert(itemsToInsert);
 
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(itemsToInsert);
+      // 2. Enviar E-mail
+      await supabase.functions.invoke('send-order-email', { body: { order: orderData, items: cart } });
 
-      if (itemsError) throw itemsError;
-
-      // 3. Enviar E-mail de Confirmação (Resend)
-      try {
-        await supabase.functions.invoke('send-order-email', {
-          body: {
-            order: orderData,
-            items: cart
-          }
-        });
-      } catch (emailError) {
-        console.error("Erro ao enviar e-mail:", emailError);
-        // Não travamos o fluxo se o e-mail falhar, o pedido já foi salvo
-      }
-
-      // 4. Processar Pagamento via Edge Function
+      // 3. Processar Pagamento Real
       const { data, error } = await supabase.functions.invoke('mercadopago-payment', {
         body: {
           items: cart,
           orderId: orderId,
           clientData: formData,
-          paymentMethod: formData.pagamento
+          paymentMethod: 'cartao',
+          cardData: cardFormData
+        }
+      });
+
+      if (error || (data && data.error)) throw new Error(error?.message || data?.error || "Erro no pagamento");
+
+      if (data.status === 'approved' || data.status === 'in_process') {
+         setOrderDetails(orderData);
+         setOrderPlaced(true);
+         clearCart();
+         toast.success("Pagamento processado!");
+      } else {
+         throw new Error("O pagamento foi recusado. Verifique os dados e tente novamente.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message);
+      throw err; // Necessário para o Brick mostrar o erro
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handlePurchase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.pagamento === 'cartao') {
+      // O Brick cuida do submit via callback
+      return;
+    }
+    
+    setLoading(true);
+
+    const orderId = `#${Math.floor(100000 + Math.random() * 900000)}`;
+    const fullAddress = formData.entrega === 'retirada' 
+      ? "Retirada em Loja - Campinas/SP" 
+      : `${formData.rua}, ${formData.numero} - ${formData.bairro}, ${formData.cidade} - ${formData.uf}`;
+    
+    const orderData: OrderData = {
+      id: orderId,
+      client_name: formData.nome,
+      client_email: formData.email,
+      client_phone: formData.telefone,
+      client_cpf: formData.cpf,
+      address: fullAddress,
+      total_price: safeTotalPrice,
+      payment_method: 'PIX Mercado Pago',
+      transaction_id: `AUTO-PIX-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+      status: 'Aguardando Pagamento'
+    };
+
+    try {
+      await supabase.from('orders').insert([orderData]);
+      const itemsToInsert = cart.map(item => ({
+        order_id: orderId,
+        product_name: item.name,
+        quantity: item.quantity,
+        price: typeof item.price === 'number' ? item.price : 3300
+      }));
+      await supabase.from('order_items').insert(itemsToInsert);
+
+      await supabase.functions.invoke('send-order-email', { body: { order: orderData, items: cart } });
+
+      const { data, error } = await supabase.functions.invoke('mercadopago-payment', {
+        body: {
+          items: cart,
+          orderId: orderId,
+          clientData: formData,
+          paymentMethod: 'pix'
         }
       });
 
       if (error) throw error;
 
-      if (formData.pagamento === 'pix' && data?.qr_code) {
-        setPixData({
-          qr_code: data.qr_code,
-          qr_code_base64: data.qr_code_base64
-        });
+      if (data?.qr_code) {
+        setPixData({ qr_code: data.qr_code, qr_code_base64: data.qr_code_base64 });
         setOrderDetails(orderData);
         setOrderPlaced(true);
         clearCart();
-      } else if (data?.init_point) {
-        window.location.href = data.init_point;
-        return;
-      } else {
-        throw new Error("Falha ao gerar pagamento.");
       }
 
     } catch (error: any) {
-      console.error("Erro no processamento:", error);
+      console.error(error);
       alert("Erro ao processar pedido: " + (error.message || "Verifique sua conexão"));
     } finally {
       setLoading(false);
@@ -227,7 +324,7 @@ const Checkout = () => {
            <button onClick={() => setShowEmailPreview(false)} className="text-slate-400 hover:text-primary">✕</button>
         </div>
         
-        <div className="p-12 overflow-y-auto">
+        <div className="p-12 overflow-y-auto text-[#0a1e36]">
            <div className="text-center mb-12">
               <div className="bg-[#0a1e36] p-6 rounded-2xl inline-block mb-8">
                  <img src="/logo.png" className="h-12 mx-auto" />
@@ -235,7 +332,7 @@ const Checkout = () => {
               <div className="w-16 h-16 bg-[#25D366]/10 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle2 className="w-8 h-8 text-[#25D366]" />
               </div>
-              <h2 className="text-3xl font-black text-[#0a1e36]" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>PEDIDO RECEBIDO!</h2>
+              <h2 className="text-3xl font-black uppercase" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>PEDIDO RECEBIDO!</h2>
               <p className="text-muted-foreground mt-2 font-medium">Olá, {formData.nome.split(' ')[0]}! Tudo pronto com o seu pedido.</p>
            </div>
 
@@ -244,7 +341,7 @@ const Checkout = () => {
               <div className="space-y-4">
                  <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Número do Pedido:</span>
-                    <span className="font-bold text-[#0a1e36]">{orderDetails?.id || "#884210"}</span>
+                    <span className="font-bold">{orderDetails?.id || "#884210"}</span>
                  </div>
                  <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Status:</span>
@@ -300,7 +397,6 @@ const Checkout = () => {
                </div>
                
                <div className="space-y-4">
-                 <p className="text-sm text-muted-foreground font-medium">Após o pagamento, o pedido será aprovado instantaneamente.</p>
                  <Link to={`/rastreio?orderId=${orderDetails?.id}`} className="block w-full bg-primary text-white py-6 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all">
                    Ver Status do Pedido
                  </Link>
@@ -319,8 +415,6 @@ const Checkout = () => {
               </div>
             </>
           )}
-          
-          <Link to="/" className="mt-12 inline-block text-[10px] font-black uppercase text-slate-400 hover:text-primary tracking-widest transition-all">Sair para a Loja</Link>
         </div>
       </div>
     );
@@ -447,13 +541,13 @@ const Checkout = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button
                       type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, pagamento: 'mercadopago' }))}
-                      className={`p-8 rounded-3xl border-2 transition-all flex flex-col items-center gap-4 ${formData.pagamento === 'mercadopago' ? 'border-primary bg-primary/5' : 'border-slate-100 bg-slate-50'}`}
+                      onClick={() => setFormData(prev => ({ ...prev, pagamento: 'cartao' }))}
+                      className={`p-8 rounded-3xl border-2 transition-all flex flex-col items-center gap-4 ${formData.pagamento === 'cartao' ? 'border-primary bg-primary/5' : 'border-slate-100 bg-slate-50'}`}
                     >
                        <div className="flex flex-col items-center text-center">
-                          <CreditCard className={`w-10 h-10 mb-2 ${formData.pagamento === 'mercadopago' ? 'text-primary' : 'text-slate-400'}`} />
-                          <span className="font-black uppercase tracking-widest text-xs">Mercado Pago</span>
-                          <span className="text-[10px] text-muted-foreground mt-1">Cartão ou Outros (via MP)</span>
+                          <CreditCard className={`w-10 h-10 mb-2 ${formData.pagamento === 'cartao' ? 'text-primary' : 'text-slate-400'}`} />
+                          <span className="font-black uppercase tracking-widest text-xs">Cartão de Crédito</span>
+                          <span className="text-[10px] text-muted-foreground mt-1">Até 5x Sem Juros</span>
                        </div>
                     </button>
 
@@ -465,15 +559,26 @@ const Checkout = () => {
                        <div className="flex flex-col items-center text-center">
                           <div className={`font-black text-2xl mb-1 ${formData.pagamento === 'pix' ? 'text-[#25D366]' : 'text-slate-400'}`}>PIX</div>
                           <span className="font-black uppercase tracking-widest text-xs">PIX Instantâneo</span>
-                          <span className="text-[10px] text-muted-foreground mt-1">QR Code Gerado Agora</span>
+                          <span className="text-[10px] text-muted-foreground mt-1">Desconto Progressivo</span>
                        </div>
                     </button>
                   </div>
+
+                  {formData.pagamento === 'cartao' && (
+                    <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                      <div id="cardPaymentBrick_container" className="bg-slate-50 p-6 rounded-3xl border border-slate-100"></div>
+                      <p className="text-[10px] text-center text-muted-foreground mt-4 font-medium uppercase tracking-widest">
+                        🛡️ Pagamento processado com segurança pelo Mercado Pago
+                      </p>
+                    </div>
+                  )}
                 </section>
 
-                <Button type="submit" disabled={loading} className="w-full h-24 text-2xl font-black uppercase tracking-widest rounded-3xl bg-primary hover:shadow-2xl hover:shadow-primary/30 transition-all">
-                  {loading ? "Processando..." : "Finalizar Pedido"}
-                </Button>
+                {formData.pagamento !== 'cartao' && (
+                  <Button type="submit" disabled={loading} className="w-full h-24 text-2xl font-black uppercase tracking-widest rounded-3xl bg-primary hover:shadow-2xl hover:shadow-primary/30 transition-all">
+                    {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : "Finalizar Pedido"}
+                  </Button>
+                )}
               </form>
             </div>
 
@@ -508,6 +613,14 @@ const Checkout = () => {
                       <span className="uppercase text-sm self-center">Total</span>
                       <span>{formatPrice(safeTotalPrice)}</span>
                    </div>
+                   
+                   {formData.pagamento === 'cartao' && (
+                     <div className="bg-primary/10 p-4 rounded-xl mt-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-primary text-center">
+                          Simulação de Parcelas: 5x de {formatPrice(safeTotalPrice / 5)} sem juros
+                        </p>
+                     </div>
+                   )}
                 </div>
               </div>
             </div>
