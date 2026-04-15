@@ -157,7 +157,20 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
-      // 3. Processar Pagamento via Edge Function
+      // 3. Enviar E-mail de Confirmação (Resend)
+      try {
+        await supabase.functions.invoke('send-order-email', {
+          body: {
+            order: orderData,
+            items: cart
+          }
+        });
+      } catch (emailError) {
+        console.error("Erro ao enviar e-mail:", emailError);
+        // Não travamos o fluxo se o e-mail falhar, o pedido já foi salvo
+      }
+
+      // 4. Processar Pagamento via Edge Function
       const { data, error } = await supabase.functions.invoke('mercadopago-payment', {
         body: {
           items: cart,
