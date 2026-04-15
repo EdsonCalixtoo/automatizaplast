@@ -16,6 +16,9 @@ serve(async (req) => {
 
     if (!resendApiKey) throw new Error('RESEND_API_KEY is not set')
 
+    // Usando a URL oficial do GitHub para garantir que o logo apareça no e-mail
+    const logoUrl = "https://raw.githubusercontent.com/EdsonCalixtoo/automatizaplast/main/public/logo.png";
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -44,7 +47,7 @@ serve(async (req) => {
                     <!-- Header with Logo -->
                     <tr>
                       <td align="center" style="padding: 40px; background-color: #0a1e36;">
-                        <img src="https://cjyqxjykbpbocjcbrsem.supabase.co/storage/v1/object/public/assets/logo.png" alt="Automatiza Plast" width="180" style="display: block;">
+                        <img src="${logoUrl}" alt="Automatiza Plast" width="220" style="display: block;">
                       </td>
                     </tr>
 
@@ -110,7 +113,7 @@ serve(async (req) => {
                         <p style="font-size: 14px; color: #64748b; line-height: 1.6; margin-bottom: 24px; font-weight: 500;">
                           Seu kit em <strong>Plástico ABS de Alta Resistência</strong> entrará no cronograma após a confirmação do pagamento.
                         </p>
-                        <a href="${req.headers.get('origin')}/rastreio?orderId=${order.id.replace('#', '')}" style="background-color: #ef4444; color: #ffffff; padding: 20px 40px; border-radius: 20px; text-decoration: none; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; display: inline-block; box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);">
+                        <a href="https://automatizaplast.com.br/rastreio?orderId=${order.id.replace('#', '')}" style="background-color: #ef4444; color: #ffffff; padding: 20px 40px; border-radius: 20px; text-decoration: none; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; display: inline-block; box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);">
                           Acompanhar Etapas do Meu Pedido
                         </a>
                       </td>
