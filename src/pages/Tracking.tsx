@@ -30,10 +30,13 @@ const Tracking = () => {
 
   const fetchOrder = async () => {
     try {
+      // Normaliza o ID: se não começar com #, adiciona o #
+      const normalizedId = orderId?.startsWith('#') ? orderId : `#${orderId}`;
+
       const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .eq('id', orderId)
+        .eq('id', normalizedId)
         .single();
       
       if (data) setOrder(data);
