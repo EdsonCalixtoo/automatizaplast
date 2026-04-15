@@ -48,15 +48,26 @@ const Tracking = () => {
   };
 
   const getStages = (status: string) => {
-    const isPaid = status === 'Pago' || status?.includes('Pago') || status?.includes('Aprovado');
-    const isProcessing = status?.includes('processamento') || status?.includes('Produção');
+    // Mapeamento de status profissional
+    const isApproved = status === 'Pagamento Aprovado' || status === 'approved';
+    const isPending = status?.includes('Aguardando') || status?.includes('pendente') || status === 'pending';
+    const isRejected = status?.includes('Recusado') || status === 'rejected';
+    const isCancelled = status?.includes('Cancelado') || status === 'cancelled';
+
+    const isProcessing = status?.includes('Produção') || status?.includes('processamento');
     const isShipped = status?.includes('Enviado') || status?.includes('Transporte');
     const isDelivered = status === 'Entregue';
 
     return [
       { id: 1, title: "Pedido Recebido", date: order ? new Date(order.created_at).toLocaleDateString() : "---", status: "completed", icon: ShoppingBag },
-      { id: 2, title: "Pagamento Aprovado", date: isPaid ? "Confirmado" : "Pendente", status: isPaid ? "completed" : "current", icon: CheckCircle2 },
-      { id: 3, title: "Em Produção", date: isProcessing ? "Iniciado" : "Aguardando", status: isProcessing ? "current" : (isPaid ? "upcoming" : "upcoming"), icon: Package },
+      { 
+        id: 2, 
+        title: isRejected ? "Pagamento Recusado" : isCancelled ? "Pagamento Cancelado" : "Pagamento Aprovado", 
+        date: isApproved ? "Confirmado" : isPending ? "Confirmando..." : "---", 
+        status: isApproved ? "completed" : isPending ? "current" : (isRejected || isCancelled ? "upcoming" : "upcoming"), 
+        icon: CheckCircle2 
+      },
+      { id: 3, title: "Em Produção", date: isProcessing ? "Iniciado" : "---", status: isProcessing ? "current" : (isApproved ? "upcoming" : "upcoming"), icon: Package },
       { id: 4, title: "Expedição / Transporte", date: "---", status: isShipped ? "current" : "upcoming", icon: Truck },
       { id: 5, title: "Entregue", date: "---", status: isDelivered ? "completed" : "upcoming", icon: MapPin },
     ];

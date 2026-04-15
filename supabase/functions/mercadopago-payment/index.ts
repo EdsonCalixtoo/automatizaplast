@@ -13,6 +13,7 @@ serve(async (req) => {
   try {
     const { items, orderId, clientData, paymentMethod, cardData } = await req.json()
     const accessToken = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN');
+    const webhookUrl = "https://cjyqxjykbpbocjcbrsem.supabase.co/functions/v1/mercadopago-webhook";
 
     if (!accessToken) throw new Error('MERCADOPAGO_ACCESS_TOKEN is not set');
 
@@ -39,6 +40,7 @@ serve(async (req) => {
             identification: cardData.payer.identification,
           },
           external_reference: orderId,
+          notification_url: webhookUrl,
         })
       });
 
@@ -74,6 +76,7 @@ serve(async (req) => {
             }
           },
           external_reference: orderId,
+          notification_url: webhookUrl,
         })
       });
 
@@ -91,7 +94,6 @@ serve(async (req) => {
       );
     } 
     
-    // 3. Caso contrário (Preferência)
     return new Response(
       JSON.stringify({ error: 'Método de pagamento não suportado' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }

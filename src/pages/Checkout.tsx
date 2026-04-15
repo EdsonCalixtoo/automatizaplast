@@ -204,10 +204,7 @@ const Checkout = () => {
       }));
       await supabase.from('order_items').insert(itemsToInsert);
 
-      // 2. Enviar E-mail
-      await supabase.functions.invoke('send-order-email', { body: { order: orderData, items: cart } });
-
-      // 3. Processar Pagamento Real
+      // 2. Processar Pagamento Real
       const { data, error } = await supabase.functions.invoke('mercadopago-payment', {
         body: {
           items: cart,
@@ -220,13 +217,27 @@ const Checkout = () => {
 
       if (error || (data && data.error)) throw new Error(error?.message || data?.error || "Erro no pagamento");
 
-      if (data.status === 'approved' || data.status === 'in_process') {
-         setOrderDetails(orderData);
+      // No Checkout Transparente, tratamos approved e in_process (pending)
+      if (data.status === 'approved' || data.status === 'in_process' || data.status === 'pending') {
+         // O status amigável será atualizado pelo Webhook, mas aqui já damos um feedback
+         const finalStatus = data.status === 'approved' ? 'Pagamento Aprovado' : 'Confirmando Pagamento';
+         
+         const { error: updateError } = await supabase
+           .from('orders')
+           .update({ status: finalStatus, mercadopago_payment_id: String(data.id) })
+           .eq('id', orderId);
+
+         setOrderDetails({ ...orderData, status: finalStatus });
          setOrderPlaced(true);
          clearCart();
-         toast.success("Pagamento processado!");
+         
+         if (data.status === 'approved') {
+           toast.success("Pagamento aprovado!");
+         } else {
+           toast.info("Pagamento em análise pelo Mercado Pago.");
+         }
       } else {
-         throw new Error("O pagamento foi recusado. Verifique os dados e tente novamente.");
+         throw new Error("O pagamento foi recusado ou cancelado. Verifique os dados.");
       }
     } catch (err: any) {
       console.error(err);
@@ -274,8 +285,6 @@ const Checkout = () => {
       }));
       await supabase.from('order_items').insert(itemsToInsert);
 
-      await supabase.functions.invoke('send-order-email', { body: { order: orderData, items: cart } });
-
       const { data, error } = await supabase.functions.invoke('mercadopago-payment', {
         body: {
           items: cart,
@@ -288,6 +297,12 @@ const Checkout = () => {
       if (error) throw error;
 
       if (data?.qr_code) {
+        // Salvar o ID do pagamento para o webhook identificar depois
+        await supabase
+          .from('orders')
+           .update({ mercadopago_payment_id: String(data.id) })
+           .eq('id', orderId);
+
         setPixData({ qr_code: data.qr_code, qr_code_base64: data.qr_code_base64 });
         setOrderDetails(orderData);
         setOrderPlaced(true);
