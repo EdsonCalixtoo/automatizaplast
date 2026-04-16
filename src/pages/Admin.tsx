@@ -54,6 +54,7 @@ const Admin = () => {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     checkAdminAccess();
@@ -437,66 +438,125 @@ const Admin = () => {
 
             {/* Orders Table */}
             <div className="bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden">
-               <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-                  <h3 className="text-2xl font-black uppercase text-[#0a1e36]" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
-                    {activeTab === "dashboard" ? "Pedidos Recentes" : "Todos os Pedidos"}
-                  </h3>
-                  <div className="flex items-center gap-4">
+               <div className="p-8 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div>
+                    <h3 className="text-2xl font-black uppercase text-[#0a1e36]" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      {activeTab === "dashboard" ? "Pedidos Recentes" : "Todos os Pedidos"}
+                    </h3>
+                    {activeTab === "orders" && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Total: {orders.length} pedidos encontrados</p>}
+                  </div>
+                  
+                  <div className="flex items-center gap-4 flex-1 max-w-md">
+                     <div className="relative flex-1">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input 
+                          type="text"
+                          placeholder="Buscar por nome, e-mail ou ID..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                        />
+                     </div>
                      <button className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-400 hover:text-primary transition-colors">
                         <Filter className="w-5 h-5" />
                      </button>
                   </div>
                </div>
                <div className="overflow-x-auto">
-                 <table className="w-full text-left">
-                   <thead>
-                     <tr className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                       <th className="px-8 py-6">ID</th>
-                       <th className="px-8 py-6">Cliente</th>
-                       <th className="px-8 py-6">Produto</th>
-                       <th className="px-8 py-6">Status</th>
-                       <th className="px-8 py-6">Valor</th>
-                       <th className="px-8 py-6">Ações</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y divide-slate-50">
-                     {(activeTab === "dashboard" ? orders.slice(0, 5) : orders).map((order) => (
-                       <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
-                         <td className="px-8 py-6 font-bold text-sm">{order.id}</td>
-                         <td className="px-8 py-6">
-                           <div className="flex flex-col">
-                             <span className="font-bold text-sm">{order.client_name}</span>
-                             <span className="text-[10px] text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</span>
+                   <div className="min-w-[1200px] p-8">
+                     {/* Header Fake Table */}
+                     <div className="flex bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400 px-6 py-4 rounded-xl mb-4">
+                       <div className="w-[12%]">Pedido</div>
+                       <div className="w-[20%]">Cliente / Contato</div>
+                       <div className="w-[15%]">Documento / CPF</div>
+                       <div className="w-[20%]">Endereço de Entrega</div>
+                       <div className="w-[12%]">Pagamento</div>
+                       <div className="w-[12%]">Status</div>
+                       <div className="w-[9%] text-right pr-4">Ações</div>
+                     </div>
+
+                     <div className="space-y-3">
+                       {(activeTab === "dashboard" ? orders.slice(0, 5) : orders.filter(o => {
+                         const term = searchTerm.toLowerCase();
+                         if (!term) return true;
+                         return o.id.toLowerCase().includes(term) || 
+                                o.client_name?.toLowerCase().includes(term) || 
+                                o.client_email?.toLowerCase().includes(term);
+                       })).map((order) => (
+                         <div key={order.id} className="flex items-center px-6 py-6 bg-white border border-slate-100 rounded-[24px] hover:shadow-xl hover:shadow-slate-200/50 hover:border-primary/20 transition-all group">
+                           {/* ID */}
+                           <div className="w-[12%]">
+                             <div className="flex flex-col">
+                               <span className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">ID do Pedido</span>
+                               <span className="font-bold text-sm text-[#0a1e36]">{order.id}</span>
+                               <span className="text-[9px] text-slate-400 font-bold mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Ver Detalhes</span>
+                             </div>
                            </div>
-                         </td>
-                         <td className="px-8 py-6 text-sm text-slate-600 truncate max-w-[200px]">
-                            {order.order_items?.[0]?.product_name || "Kit Personalizado"}
-                         </td>
-                         <td className="px-8 py-6">
-                            <span className={`text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${
-                              order.status === 'Concluído' ? 'bg-emerald-100 text-emerald-600' : 
-                              order.status === 'Em processamento' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'
-                            }`}>
-                              {order.status || 'Pagamento Aprovado'}
-                            </span>
-                         </td>
-                         <td className="px-8 py-6 font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_price)}</td>
-                         <td className="px-8 py-6">
-                            <button 
-                              onClick={() => setSelectedOrder(order)}
-                              className="bg-primary/10 text-primary p-3 rounded-xl hover:bg-primary hover:text-white transition-all"
-                            >
-                               <ExternalLink className="w-4 h-4" />
-                            </button>
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
+
+                           {/* Cliente */}
+                           <div className="w-[20%]">
+                             <div className="flex flex-col gap-1">
+                               <span className="font-bold text-sm text-[#0a1e36]">{order.client_name || "Sem Nome"}</span>
+                               <span className="text-[10px] text-primary font-bold">{order.client_email || "Sem E-mail"}</span>
+                               <span className="text-[10px] text-slate-400 font-medium">{order.client_phone || "(00) 00000-0000"}</span>
+                             </div>
+                           </div>
+
+                           {/* Documento */}
+                           <div className="w-[15%]">
+                              <span className="text-xs font-bold text-slate-600">
+                                 {order.client_cpf || "000.000.000-00"}
+                              </span>
+                           </div>
+
+                           {/* Endereço */}
+                           <div className="w-[20%]">
+                             <p className="text-[10px] text-slate-500 font-medium max-w-[200px] leading-relaxed">
+                               {order.address || "Retirada em Loja"}
+                             </p>
+                           </div>
+
+                           {/* Pagamento */}
+                           <div className="w-[12%]">
+                             <div className="flex flex-col gap-1">
+                                <span className={`text-[9px] font-black px-2 py-1 rounded uppercase tracking-widest inline-block w-fit ${order.payment_method?.toLowerCase().includes('pix') ? 'bg-[#25D366]/10 text-[#25D366]' : 'bg-primary/10 text-primary'}`}>
+                                  {order.payment_method?.toLowerCase().includes('pix') ? 'PIX' : 'Cartão'}
+                                </span>
+                                {order.card_last_4 && (
+                                  <span className="text-[10px] font-bold text-slate-400 italic">final {order.card_last_4}</span>
+                                )}
+                                <span className="text-[10px] font-black text-[#0a1e36] mt-1">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_price)}</span>
+                             </div>
+                           </div>
+
+                           {/* Status */}
+                           <div className="w-[12%]">
+                              <span className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${
+                                order.status === 'Pago' || order.status === 'Pagamento aprovado' ? 'bg-emerald-100 text-emerald-600' : 
+                                order.status?.includes('processamento') ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'
+                              }`}>
+                                {order.status || 'Pagamento Aprovado'}
+                              </span>
+                           </div>
+
+                           {/* Ações */}
+                           <div className="w-[9%] flex justify-end gap-2 pr-4">
+                              <button 
+                                onClick={() => setSelectedOrder(order)}
+                                className="bg-slate-50 text-slate-400 p-3 rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
+                                title="Ver Detalhes"
+                              >
+                                 <ExternalLink className="w-4 h-4" />
+                              </button>
+                           </div>
+                         </div>
+                       ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {activeTab === "products" && (
           <div className="space-y-8 animate-in fade-in duration-500">

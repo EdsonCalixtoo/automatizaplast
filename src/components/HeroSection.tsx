@@ -91,7 +91,7 @@ const HeroSection = () => (
           
           {/* Decorative accents */}
           <div className="absolute -z-10 -bottom-10 -right-10 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 -left-8 -translate-y-1/2 w-16 h-16 bg-white border border-border rounded-2xl shadow-lg flex items-center justify-center animate-bounce duration-[3000ms]">
+          <div className="absolute top-1/2 -left-8 -translate-y-1/2 w-16 h-16 bg-white border border-border rounded-2xl shadow-lg flex items-center justify-center animate-bounce [animation-duration:3000ms]">
             <Award className="w-8 h-8 text-primary" />
           </div>
         </div>

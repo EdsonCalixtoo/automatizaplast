@@ -45,6 +45,7 @@ const Checkout = () => {
   const [copied, setCopied] = useState(false);
   const [mp, setMp] = useState<any>(null);
   const [cardBrickController, setCardBrickController] = useState<any>(null);
+  const [emailError, setEmailError] = useState("");
   
   const [formData, setFormData] = useState({
     nome: "",
@@ -72,49 +73,59 @@ const Checkout = () => {
 
   // Initialize Card Brick
   useEffect(() => {
-    if (mp && formData.pagamento === 'cartao' && !cardBrickController && !orderPlaced) {
+    if (mp && formData.pagamento === 'cartao' && !cardBrickController && !orderPlaced && formData.email) {
       const renderCardBrick = async () => {
-        const bricksBuilder = mp.bricks();
-        const settings = {
-          initialization: {
-            amount: safeTotalPrice,
-            payer: {
-              email: formData.email,
-            },
-          },
-          customization: {
-            visual: {
-              style: {
-                theme: 'flat',
-                customVariables: {
-                  borderRadius: '20px',
-                  inputBackgroundColor: '#f8fafc',
-                }
-              }
-            },
-            paymentMethods: {
-              maxInstallments: 12,
+        // Pequeno delay para garantir que a Div do container ja foi renderizada pelo React
+        const checkExist = setInterval(async () => {
+          const container = document.getElementById('cardPaymentBrick_container');
+          if (container) {
+            clearInterval(checkExist);
+            try {
+              const bricksBuilder = mp.bricks();
+              const settings = {
+                initialization: {
+                  amount: safeTotalPrice,
+                  payer: { email: formData.email },
+                },
+                customization: {
+                  visual: {
+                    hideFormSubheadings: true,
+                    hidePayerEmail: true,
+                    style: {
+                      theme: 'flat',
+                      customVariables: {
+                        borderRadius: '20px',
+                        inputBackgroundColor: '#f8fafc',
+                      }
+                    }
+                  },
+                  inputs: {
+                    payerEmail: {
+                      hidden: true
+                    }
+                  },
+                  paymentMethods: { maxInstallments: 12 }
+                },
+                callbacks: {
+                  onReady: () => console.log('Brick ready'),
+                  onSubmit: (cardFormData: any) => processCardPayment(cardFormData),
+                  onError: (error: any) => console.error('Brick error', error),
+                },
+              };
+              const controller = await bricksBuilder.create('cardPayment', 'cardPaymentBrick_container', settings);
+              setCardBrickController(controller);
+            } catch (err) {
+              console.error("Erro ao criar Brick:", err);
             }
-          },
-          callbacks: {
-            onReady: () => {
-              console.log('Brick ready');
-            },
-            onSubmit: (cardFormData: any) => {
-              return processCardPayment(cardFormData);
-            },
-            onError: (error: any) => {
-              console.error('Brick error', error);
-              toast.error("Erro ao carregar formulário de cartão");
-            },
-          },
-        };
-        const controller = await bricksBuilder.create('cardPayment', 'cardPaymentBrick_container', settings);
-        setCardBrickController(controller);
+          }
+        }, 100);
+
+        // Limpa o intervalo após 5 segundos se não encontrar (timeout de segurança)
+        setTimeout(() => clearInterval(checkExist), 5000);
       };
       renderCardBrick();
     }
-  }, [mp, formData.pagamento, orderPlaced]);
+  }, [mp, formData.pagamento, orderPlaced, formData.email]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -143,9 +154,44 @@ const Checkout = () => {
     }, 0);
   }, [cart]);
 
+  const validateEmail = (email: string) => {
+    if (!email) {
+      setEmailError("E-mail é obrigatório");
+      return false;
+    }
+    
+    // Regex completo para validação de formato
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      setEmailError("Digite um e-mail válido (ex: nome@dominio.com)");
+      return false;
+    }
+
+    // Bloqueio de domínios inválidos ou genéricos de teste
+    const blockedDomains = ['teste.com', 'email.com', 'example.com', 'abc.com', '123.com', 'test.com', 'mail.com'];
+    const domain = email.split('@')[1]?.toLowerCase();
+    if (blockedDomains.includes(domain)) {
+      setEmailError("Este domínio de e-mail não é aceito. Use um e-mail real.");
+      return false;
+    }
+
+    // Bloqueio de e-mails específicos conhecidos por testes
+    if (email.toLowerCase().includes('erro@email.com') || email.toLowerCase().startsWith('teste@')) {
+      setEmailError("Este e-mail é inválido para compras.");
+      return false;
+    }
+
+    setEmailError("");
+    return true;
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'email') {
+      validateEmail(value);
+    }
   };
 
   const handleCepBlur = async () => {
@@ -173,7 +219,11 @@ const Checkout = () => {
     }
   };
 
-  const processCardPayment = async (cardFormData: any) => {
+   const processCardPayment = async (cardFormData: any) => {
+    if (!validateEmail(formData.email)) {
+      toast.error("Por favor, corrija seu e-mail antes de continuar.");
+      return;
+    }
     setLoading(true);
     const orderId = `#${Math.floor(100000 + Math.random() * 900000)}`;
     const fullAddress = formData.entrega === 'retirada' 
@@ -203,6 +253,15 @@ const Checkout = () => {
         price: typeof item.price === 'number' ? item.price : 3300
       }));
       await supabase.from('order_items').insert(itemsToInsert);
+
+      // Enviar e-mail de confirmação (Não bloqueia o fluxo se falhar)
+      try {
+        await supabase.functions.invoke('send-order-email', {
+          body: { order: orderData, items: cart }
+        });
+      } catch (e) {
+        console.warn("Falha no envio do e-mail de confirmação:", e);
+      }
 
       // 2. Processar Pagamento Real
       const { data, error } = await supabase.functions.invoke('mercadopago-payment', {
@@ -255,6 +314,11 @@ const Checkout = () => {
       return;
     }
     
+    if (!validateEmail(formData.email)) {
+      toast.error("Por favor, insira um e-mail válido.");
+      return;
+    }
+    
     setLoading(true);
 
     const orderId = `#${Math.floor(100000 + Math.random() * 900000)}`;
@@ -284,6 +348,15 @@ const Checkout = () => {
         price: typeof item.price === 'number' ? item.price : 3300
       }));
       await supabase.from('order_items').insert(itemsToInsert);
+
+      // Enviar e-mail de confirmação (Não bloqueia o fluxo se falhar)
+      try {
+        await supabase.functions.invoke('send-order-email', {
+          body: { order: orderData, items: cart }
+        });
+      } catch (e) {
+        console.warn("Falha no envio do e-mail de confirmação:", e);
+      }
 
       const { data, error } = await supabase.functions.invoke('mercadopago-payment', {
         body: {
@@ -384,52 +457,55 @@ const Checkout = () => {
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
         {showEmailPreview && <EmailPreview />}
         
-        <div className="max-w-xl w-full bg-white p-12 rounded-[40px] shadow-2xl border border-slate-100">
-          <div className="w-24 h-24 bg-[#25D366]/10 rounded-full flex items-center justify-center mb-10 animate-bounce mx-auto">
-            <CheckCircle2 className="w-12 h-12 text-[#25D366]" />
+        <div className="max-w-2xl w-full bg-white p-16 rounded-[50px] shadow-2xl border border-slate-100 relative overflow-hidden">
+          {/* Decorative element */}
+          <div className="absolute top-0 left-0 w-full h-2 bg-primary"></div>
+          
+          <div className="w-24 h-24 bg-[#25D366]/10 rounded-full flex items-center justify-center mb-10 mx-auto">
+            <CheckCircle2 className="w-12 h-12 text-[#25D366] animate-in zoom-in duration-500" />
           </div>
           
-          <h1 className="text-4xl lg:text-5xl font-black uppercase mb-4 tracking-tighter text-[#0a1e36]" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
-            Pedido <span className="text-[#25D366]">Registrado!</span>
+          <h1 className="text-5xl lg:text-6xl font-black uppercase mb-4 tracking-tighter text-[#0a1e36]" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
+            MUITO <span className="text-primary">OBRIGADO!</span>
           </h1>
           
-          {pixData ? (
-            <div className="mt-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-               <div className="p-8 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200">
+          <p className="text-slate-500 font-medium text-lg mb-10 max-w-md mx-auto">
+            Seu pedido <strong className="text-[#0a1e36]">{orderDetails?.id}</strong> foi registrado. 
+            Acabamos de enviar uma confirmação detalhada para seu e-mail.
+          </p>
+          
+          {pixData && (
+            <div className="mb-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+               <div className="p-8 bg-slate-50 rounded-[40px] border-2 border-dashed border-slate-200">
                   <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-6">Escaneie o QR Code abaixo</p>
-                  <img src={`data:image/png;base64,${pixData.qr_code_base64}`} alt="QR Code PIX" className="w-48 h-48 mx-auto rounded-xl shadow-lg bg-white p-2" />
+                  <img src={`data:image/png;base64,${pixData.qr_code_base64}`} alt="QR Code PIX" className="w-48 h-48 mx-auto rounded-2xl shadow-lg bg-white p-2" />
                   
                   <div className="mt-8">
                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Pix Copia e Cola</p>
                     <button 
                       onClick={copyPix}
-                      className="w-full h-14 bg-white border border-slate-200 rounded-xl px-4 flex items-center justify-between hover:bg-slate-50 transition-all group"
+                      className="w-full h-16 bg-white border border-slate-100 rounded-2xl px-6 flex items-center justify-between hover:border-primary transition-all group shadow-sm"
                     >
                       <span className="text-xs font-bold truncate mr-4 text-slate-500">{pixData.qr_code}</span>
-                      {copied ? <Check className="w-5 h-5 text-[#25D366]" /> : <Copy className="w-5 h-5 text-slate-400 group-hover:text-primary" />}
+                      {copied ? <Check className="w-6 h-6 text-[#25D366]" /> : <Copy className="w-6 h-6 text-slate-300 group-hover:text-primary" />}
                     </button>
                   </div>
                </div>
-               
-               <div className="space-y-4">
-                 <Link to={`/rastreio?orderId=${orderDetails?.id}`} className="block w-full bg-primary text-white py-6 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all">
-                   Ver Status do Pedido
-                 </Link>
-               </div>
             </div>
-          ) : (
-            <>
-              <p className="text-muted-foreground mb-12 text-lg">Obrigado pela preferência! Acabamos de enviar uma confirmação para seu e-mail.</p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                 <button onClick={() => setShowEmailPreview(true)} className="bg-slate-100 text-[#0a1e36] px-10 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all border border-slate-200">
-                   Preview do E-mail
-                 </button>
-                 <Link to={`/rastreio?orderId=${orderDetails?.id}`} className="bg-primary text-white px-10 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-primary/20 hover:scale-105 transition-all">
-                   Acompanhar Pedido
-                 </Link>
-              </div>
-            </>
           )}
+
+          <div className="grid sm:grid-cols-2 gap-4 pt-6">
+             <button onClick={() => setShowEmailPreview(true)} className="bg-slate-50 text-[#0a1e36] h-20 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-all border border-slate-100 flex items-center justify-center gap-3">
+               <Send className="w-4 h-4 text-primary" /> Preview do E-mail
+             </button>
+             <Link to={`/rastreio?orderId=${orderDetails?.id}`} className="bg-primary text-white h-20 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-primary/20 hover:scale-105 transition-all flex items-center justify-center gap-3">
+               Acompanhar Etapas <ChevronLeft className="w-4 h-4 rotate-180" />
+             </Link>
+          </div>
+
+          <p className="mt-12 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            Automatiza Plast - Tecnologia Industrial em ABS
+          </p>
         </div>
       </div>
     );
@@ -477,9 +553,19 @@ const Checkout = () => {
                        <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Nome Completo</Label>
                        <Input name="nome" value={formData.nome} onChange={handleInputChange} required className="h-16 rounded-2xl bg-slate-50 border-transparent focus-visible:bg-white focus-visible:ring-primary transition-all text-lg font-medium" />
                     </div>
-                    <div className="space-y-2">
+                     <div className="space-y-2">
                        <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">E-mail</Label>
-                       <Input name="email" type="email" value={formData.email} onChange={handleInputChange} required className="h-16 rounded-2xl bg-slate-50 border-transparent focus-visible:bg-white focus-visible:ring-primary transition-all text-lg font-medium" />
+                       <Input 
+                         name="email" 
+                         type="text" // Mudado para text para evitar validação nativa que às vezes conflita
+                         value={formData.email} 
+                         onChange={handleInputChange} 
+                         onBlur={(e) => validateEmail(e.target.value)}
+                         placeholder="exemplo@gmail.com"
+                         required 
+                         className={`h-16 rounded-2xl bg-slate-50 border-transparent focus-visible:bg-white focus-visible:ring-primary transition-all text-lg font-medium ${emailError ? 'border-red-500 bg-red-50 focus-visible:ring-red-200' : ''}`} 
+                       />
+                       {emailError && <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest ml-1 animate-in fade-in slide-in-from-top-1">{emailError}</p>}
                     </div>
                     <div className="space-y-2">
                        <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">WhatsApp / Telefone</Label>
@@ -581,7 +667,14 @@ const Checkout = () => {
 
                   {formData.pagamento === 'cartao' && (
                     <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-                      <div id="cardPaymentBrick_container" className="bg-slate-50 p-6 rounded-3xl border border-slate-100"></div>
+                      {!formData.email ? (
+                        <div className="bg-slate-50 p-8 rounded-3xl border border-dashed border-slate-200 text-center space-y-3">
+                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Aguardando dados de contato</p>
+                          <p className="text-xs text-slate-500 font-medium">Por favor, preencha o seu **Nome** e **E-mail** acima para desbloquear o pagamento com cartão.</p>
+                        </div>
+                      ) : (
+                        <div id="cardPaymentBrick_container" className="bg-slate-50 p-6 rounded-3xl border border-slate-100"></div>
+                      )}
                       <p className="text-[10px] text-center text-muted-foreground mt-4 font-medium uppercase tracking-widest">
                         🛡️ Pagamento processado com segurança pelo Mercado Pago
                       </p>

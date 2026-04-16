@@ -11,15 +11,20 @@ serve(async (req) => {
   }
 
   try {
-    const { items, orderId, clientData, paymentMethod, cardData } = await req.json()
+    const body = await req.json()
+    const { items, orderId, clientData, paymentMethod, cardData } = body
     const accessToken = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN');
     const webhookUrl = "https://cjyqxjykbpbocjcbrsem.supabase.co/functions/v1/mercadopago-webhook";
 
-    if (!accessToken) throw new Error('MERCADOPAGO_ACCESS_TOKEN is not set');
+    if (!accessToken) throw new Error('MERCADOPAGO_ACCESS_TOKEN não está configurado no Supabase');
+    if (!orderId) throw new Error('ID do pedido (orderId) ausente');
 
-    const totalPrice = items.reduce((sum: number, item: any) => sum + (Number(item.price) * item.quantity), 0);
+    const totalPrice = items.reduce((sum: number, item: any) => {
+      const price = typeof item.price === 'number' ? item.price : parseFloat(String(item.price).replace(/[^\d.,]/g, '').replace('.', '').replace(',', '.'));
+      return sum + (isNaN(price) ? 0 : price) * item.quantity;
+    }, 0);
 
-    // 1. Caso seja Cartão de Crédito (Checkout Transparente)
+    // 1. Caso seja Cartão de Crédito
     if (paymentMethod === 'cartao' && cardData) {
       const response = await fetch('https://api.mercadopago.com/v1/payments', {
         method: 'POST',
@@ -45,15 +50,15 @@ serve(async (req) => {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || JSON.stringify(data));
+      if (!response.ok) throw new Error(`Erro Mercado Pago (Cartão): ${data.message || JSON.stringify(data)}`);
 
-      return new Response(
-        JSON.stringify({ status: data.status, status_detail: data.status_detail, id: data.id }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
+      return new Response(JSON.stringify({ status: data.status, id: data.id }), { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+        status: 200 
+      });
     }
 
-    // 2. Caso seja PIX direto
+    // 2. Caso seja PIX
     if (paymentMethod === 'pix') {
       const response = await fetch('https://api.mercadopago.com/v1/payments', {
         method: 'POST',
@@ -69,7 +74,6 @@ serve(async (req) => {
           payer: {
             email: clientData.email,
             first_name: clientData.nome.split(' ')[0],
-            last_name: clientData.nome.split(' ').slice(1).join(' ') || 'Cliente',
             identification: {
               type: 'CPF',
               number: clientData.cpf.replace(/\D/g, '')
@@ -81,28 +85,25 @@ serve(async (req) => {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Erro ao gerar PIX');
+      if (!response.ok) throw new Error(`Erro Mercado Pago (PIX): ${data.message || JSON.stringify(data)}`);
 
-      return new Response(
-        JSON.stringify({ 
-          payment_type: 'pix',
-          qr_code: data.point_of_interaction.transaction_data.qr_code,
-          qr_code_base64: data.point_of_interaction.transaction_data.qr_code_base64,
-          id: data.id
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
+      return new Response(JSON.stringify({ 
+        qr_code: data.point_of_interaction.transaction_data.qr_code,
+        qr_code_base64: data.point_of_interaction.transaction_data.qr_code_base64,
+        id: data.id
+      }), { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+        status: 200 
+      });
     } 
     
-    return new Response(
-      JSON.stringify({ error: 'Método de pagamento não suportado' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-    );
+    throw new Error('Método de pagamento não reconhecido');
 
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-    )
+    console.error("Erro na função mercadopago-payment:", error.message)
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400,
+    })
   }
 })
