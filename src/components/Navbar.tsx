@@ -29,19 +29,19 @@ const Navbar = () => {
 
   return (
     <nav className="bg-[#0a1e36] border-b border-white/10 sticky top-0 z-40 transition-all duration-300 shadow-2xl">
-      <div className="container mx-auto px-6 flex items-center justify-between h-24 md:h-32 py-4">
+      <div className="container mx-auto px-4 sm:px-6 flex items-center justify-between h-16 sm:h-20 md:h-24 lg:h-28 py-2 sm:py-4">
         
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3 shrink-0 overflow-visible py-2">
+        <Link to="/" className="flex items-center gap-3 shrink-0 overflow-visible py-1 sm:py-2">
           <img 
             src="/logo.png" 
             alt="Automatiza Plast" 
-            className="h-16 md:h-24 w-auto object-contain transition-transform hover:scale-105" 
+            className="h-10 sm:h-14 md:h-18 lg:h-20 w-auto object-contain transition-transform hover:scale-105" 
           />
         </Link>
 
         {/* Desktop Nav */}
-        <div className="hidden lg:flex items-center gap-10">
+        <div className="hidden lg:flex items-center gap-8 xl:gap-10">
           {links.map((l) => (
             <a
               key={l.href}
@@ -52,7 +52,7 @@ const Navbar = () => {
                   handleLinkClick(l.href);
                 }
               }}
-              className="nav-link text-white text-sm md:text-base font-bold uppercase tracking-widest hover:text-primary transition-colors"
+              className="nav-link text-white text-sm font-bold uppercase tracking-widest hover:text-primary transition-colors"
             >
               {l.label}
             </a>
@@ -60,8 +60,8 @@ const Navbar = () => {
         </div>
 
         {/* Desktop Right */}
-        <div className="hidden lg:flex items-center gap-6">
-          <div className="flex items-center gap-4 border-r border-white/10 pr-6 mr-2">
+        <div className="hidden lg:flex items-center gap-4 xl:gap-6">
+          <div className="flex items-center gap-3 xl:gap-4 border-r border-white/10 pr-4 xl:pr-6 mr-2">
             <CartDrawer />
             <CustomerArea />
           </div>
@@ -69,17 +69,17 @@ const Navbar = () => {
             href="https://wa.me/5519983986895"
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-primary text-xs py-4 px-8 rounded-xl font-black shadow-primary/20 shadow-xl uppercase tracking-widest"
+            className="btn-primary text-xs py-3 px-5 xl:py-4 xl:px-8 rounded-xl font-black shadow-primary/20 shadow-xl uppercase tracking-widest"
           >
             Orçamento WhatsApp
           </a>
         </div>
 
         {/* Mobile */}
-        <div className="flex lg:hidden items-center gap-4">
+        <div className="flex lg:hidden items-center gap-3">
           <CartDrawer />
           <button onClick={() => setOpen(!open)} className="p-2 text-white hover:text-primary transition-colors">
-            {open ? <X className="w-8 h-8" /> : <Menu className="w-8 h-8" />}
+            {open ? <X className="w-6 h-6 sm:w-8 sm:h-8" /> : <Menu className="w-6 h-6 sm:w-8 sm:h-8" />}
           </button>
         </div>
       </div>

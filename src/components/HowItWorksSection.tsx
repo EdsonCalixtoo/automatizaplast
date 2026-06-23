@@ -28,48 +28,48 @@ const steps = [
 ];
 
 const HowItWorksSection = () => (
-  <section className="py-24 bg-white" id="instalacao">
-    <div className="container mx-auto px-6">
-      <div className="text-center mb-16">
+  <section className="py-14 sm:py-24 bg-white" id="instalacao">
+    <div className="container mx-auto px-4 sm:px-6">
+      <div className="text-center mb-10 sm:mb-16">
         <p className="section-label mb-3">Processo Automatiza Plast</p>
         <h2 className="section-title">
           Como <span className="text-primary tracking-tight">Funciona</span>
         </h2>
         <div className="line-accent mx-auto mt-4 mb-6" />
-        <p className="text-muted-foreground max-w-xl mx-auto text-lg leading-relaxed font-medium">
+        <p className="text-muted-foreground max-w-xl mx-auto text-base sm:text-lg leading-relaxed font-medium">
           Simplicidade e agilidade, desde o primeiro contato até o caminhão com side skirts novos na estrada.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 relative">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-12 relative">
         {/* Connecting Arrows (desktop only) placeholder */}
         <div className="absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent hidden lg:block -translate-y-[100px]" />
 
         {steps.map((step, i) => (
-          <div key={step.num} className="relative flex flex-col items-center text-center group pb-10 border-b border-border/50 lg:border-none lg:pb-0">
+          <div key={step.num} className="relative flex flex-col items-center text-center group pb-6 sm:pb-10 border-b border-border/50 lg:border-none lg:pb-0">
             {/* Step Icon Container */}
-            <div className="relative mb-10">
-              <div className="w-24 h-24 rounded-3xl bg-secondary flex items-center justify-center ring-4 ring-white group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-xl group-hover:rotate-6">
-                <step.icon className="w-10 h-10 text-[#0a1e36] group-hover:text-white" />
+            <div className="relative mb-6 sm:mb-10">
+              <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl bg-secondary flex items-center justify-center ring-4 ring-white group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-xl group-hover:rotate-6">
+                <step.icon className="w-7 h-7 sm:w-10 sm:h-10 text-[#0a1e36] group-hover:text-white" />
               </div>
               <span 
-                className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-black text-xs shadow-lg ring-4 ring-white"
+                className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-black text-[10px] sm:text-xs shadow-lg ring-4 ring-white"
                 style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
               >
                 {step.num}
               </span>
             </div>
 
-            <h3 className="text-2xl font-black uppercase mb-4 leading-tight text-[#0a1e36]" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
+            <h3 className="text-lg sm:text-2xl font-black uppercase mb-2 sm:mb-4 leading-tight text-[#0a1e36]" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
               {step.title}
             </h3>
-            <p className="text-muted-foreground text-sm font-medium leading-relaxed max-w-[240px]">{step.desc}</p>
+            <p className="text-muted-foreground text-xs sm:text-sm font-medium leading-relaxed max-w-[200px] sm:max-w-[240px]">{step.desc}</p>
           </div>
         ))}
       </div>
 
       {/* Special Highlights */}
-      <div className="mt-24 grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="mt-14 sm:mt-24 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8">
         {[
           { icon: Truck, title: "Envio Seguro", desc: "Trabalhamos com as melhores transportadoras do país." },
           { icon: Zap, title: "Pronta Entrega", desc: "Grande estoque de peças em Plástico ABS para envio rápido." },

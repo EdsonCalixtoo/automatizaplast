@@ -71,29 +71,30 @@
 @layer components {
   /* Buttons */
   .btn-primary {
-    @apply bg-primary text-primary-foreground font-black uppercase tracking-widest px-8 py-4 text-base transition-all duration-300 hover:shadow-[0_4px_15px_rgba(0,186,242,0.4)] hover:translate-y-[-2px] rounded-md border-b-2 border-primary/20;
+    @apply bg-primary text-primary-foreground font-black uppercase tracking-widest px-5 py-3 sm:px-8 sm:py-4 text-sm sm:text-base transition-all duration-300 hover:shadow-[0_4px_15px_rgba(0,186,242,0.4)] hover:translate-y-[-2px] rounded-md border-b-2 border-primary/20;
     font-family: 'Barlow Condensed', sans-serif;
   }
 
   .btn-outline {
-    @apply border-2 border-[#0a1e36] text-[#0a1e36] font-black uppercase tracking-widest px-8 py-4 text-base transition-all duration-300 hover:bg-[#0a1e36] hover:text-white rounded-md;
+    @apply border-2 border-[#0a1e36] text-[#0a1e36] font-black uppercase tracking-widest px-5 py-3 sm:px-8 sm:py-4 text-sm sm:text-base transition-all duration-300 hover:bg-[#0a1e36] hover:text-white rounded-md;
     font-family: 'Barlow Condensed', sans-serif;
   }
 
   .btn-whatsapp {
-    @apply fixed bottom-6 right-6 z-50 bg-[#25D366] text-white rounded-full w-14 h-14 flex items-center justify-center shadow-2xl transition-all duration-300 hover:scale-110 hover:shadow-[0_0_20px_rgba(37,211,102,0.4)];
+    @apply fixed bottom-5 right-4 sm:bottom-6 sm:right-6 z-50 bg-[#25D366] text-white rounded-full w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center shadow-2xl transition-all duration-300 hover:scale-110 hover:shadow-[0_0_20px_rgba(37,211,102,0.4)];
   }
 
   /* Section Styles */
   .section-label {
-    @apply text-primary font-black uppercase tracking-[0.2em] text-sm mb-4 inline-block px-3 py-1 bg-primary/10 rounded-sm;
+    @apply text-primary font-black uppercase tracking-[0.2em] text-xs sm:text-sm mb-4 inline-block px-3 py-1 bg-primary/10 rounded-sm;
     font-family: 'Barlow Condensed', sans-serif;
   }
 
   .section-title {
-    @apply text-4xl md:text-5xl lg:text-6xl font-black uppercase leading-tight mb-6;
+    @apply font-black uppercase leading-tight mb-6;
     font-family: 'Barlow Condensed', sans-serif;
     color: #0a1e36;
+    font-size: clamp(1.75rem, 4vw, 3.75rem);
   }
 
   /* Product Cards */
@@ -108,7 +109,7 @@
   }
 
   .topbar {
-    @apply bg-[#0a1e36] text-white py-2;
+    @apply bg-[#0a1e36] text-white py-1.5 sm:py-2;
   }
 }
 

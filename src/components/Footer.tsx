@@ -2,14 +2,14 @@ import { Phone, Mail, MapPin, MessageCircle, Truck, Wrench, ShieldCheck, Heart }
 import { Link } from "react-router-dom";
 
 const Footer = () => (
-  <footer className="bg-[#0a1e36] text-white border-t border-white/5 mt-20">
-    <div className="container mx-auto px-6 pt-20 pb-10">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-20">
+  <footer className="bg-[#0a1e36] text-white border-t border-white/5 mt-10 sm:mt-20">
+    <div className="container mx-auto px-4 sm:px-6 pt-10 sm:pt-20 pb-8 sm:pb-10">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12 mb-12 sm:mb-20">
 
         {/* Brand Info */}
-        <div className="lg:col-span-1 space-y-12 pr-10 border-r border-white/5">
+        <div className="col-span-2 md:col-span-2 lg:col-span-1 space-y-6 sm:space-y-12 lg:pr-10 lg:border-r lg:border-white/5">
           <Link to="/" className="inline-block transition-transform duration-300 hover:scale-105">
-            <img src="/logo.png" alt="Automatiza Plast" className="h-40 md:h-48 w-auto object-contain scale-110" />
+            <img src="/logo.png" alt="Automatiza Plast" className="h-24 sm:h-36 md:h-40 lg:h-48 w-auto object-contain" />
           </Link>
           <p className="text-slate-400 text-base leading-relaxed font-medium">
             Líder nacional em saias laterais (**side skirts**) para caminhões. Tecnologia de ponta em **Plástico ABS** para garantir o melhor acabamento do mercado.

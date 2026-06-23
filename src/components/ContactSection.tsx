@@ -44,20 +44,20 @@ const ContactSection = () => {
   };
 
   return (
-    <section className="py-24 bg-white" id="contato">
-      <div className="container mx-auto px-6">
-        <div className="text-center mb-16">
+    <section className="py-14 sm:py-24 bg-white" id="contato">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="text-center mb-10 sm:mb-16">
           <p className="section-label mb-3">Atendimento Customizado</p>
           <h2 className="section-title">
             Fale com <span className="text-primary">Especialistas</span>
           </h2>
           <div className="line-accent mx-auto mt-4 mb-6" />
-          <p className="text-muted-foreground max-w-xl mx-auto text-lg leading-relaxed font-medium">
+          <p className="text-muted-foreground max-w-xl mx-auto text-base sm:text-lg leading-relaxed font-medium">
             Tire suas dúvidas sobre instalação, prazos de entrega e condições de pagamento. Estamos aqui para ajudar seu caminhão a se destacar.
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-16">
+        <div className="grid lg:grid-cols-2 gap-8 sm:gap-16">
           {/* Left – Info */}
           <div className="space-y-6">
             <div className="grid sm:grid-cols-2 gap-6">
@@ -91,7 +91,7 @@ const ContactSection = () => {
                   sub: "Sábado até 12h",
                 },
               ].map(({ icon: Icon, title, value, href, sub }) => (
-                <div key={title} className="p-8 bg-secondary/50 border border-border rounded-2xl hover:translate-y-[-5px] transition-transform duration-300 group">
+                <div key={title} className="p-5 sm:p-8 bg-secondary/50 border border-border rounded-2xl hover:translate-y-[-5px] transition-transform duration-300 group">
                   <div className="w-14 h-14 bg-white border border-border rounded-2xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-colors relative">
                     <Icon className="w-6 h-6 text-primary group-hover:text-white" />
                   </div>
@@ -125,14 +125,14 @@ const ContactSection = () => {
           </div>
 
           {/* Right – Form */}
-          <div className="bg-white border-[10px] border-secondary/50 rounded-[40px] p-10 shadow-2xl relative">
+          <div className="bg-white border-[6px] sm:border-[10px] border-secondary/50 rounded-[24px] sm:rounded-[40px] p-6 sm:p-10 shadow-2xl relative">
             <div className="absolute -top-12 right-12 w-24 h-24 bg-primary rounded-full blur-[60px] opacity-20" />
             <h3 className="text-4xl font-black uppercase mb-8 leading-tight text-[#0a1e36]" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
               Solicitar <span className="text-primary">Orçamento</span> Rápido
             </h3>
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <input
                     type="text"
                     name="nome"
