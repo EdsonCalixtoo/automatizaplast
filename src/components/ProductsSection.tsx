@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 const ProductsSection = () => {
   const { addToCart } = useCart();
   const { toast } = useToast();
-  const [productsList, setProductsList] = useState(localProducts);
+  const [productsList, setProductsList] = useState<any[]>(localProducts);
 
   useEffect(() => {
     const fetchProducts = async () => {
