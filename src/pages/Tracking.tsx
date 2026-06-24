@@ -62,7 +62,7 @@ const Tracking = () => {
       { id: 1, title: "Pedido Recebido", date: order ? new Date(order.created_at).toLocaleDateString() : "---", status: "completed", icon: ShoppingBag },
       { 
         id: 2, 
-        title: isRejected ? "Pagamento Recusado" : isCancelled ? "Pagamento Cancelado" : "Pagamento Aprovado", 
+        title: isRejected ? "Pagamento Recusado" : isCancelled ? "Pagamento Cancelado" : isPending ? "Aguardando Pagamento" : "Pagamento Aprovado", 
         date: isApproved ? "Confirmado" : isPending ? "Confirmando..." : "---", 
         status: isApproved ? "completed" : isPending ? "current" : (isRejected || isCancelled ? "upcoming" : "upcoming"), 
         icon: CheckCircle2 
@@ -79,7 +79,7 @@ const Tracking = () => {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
         <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-        <p className="font-bold uppercase tracking-widest text-[#0a1e36]">Localizando seu Bruto...</p>
+        <p className="font-bold uppercase tracking-widest text-[#0a1e36]">Localizando seu Pedido...</p>
       </div>
     );
   }
@@ -96,7 +96,7 @@ const Tracking = () => {
              <div>
                 <p className="text-[10px] font-black uppercase text-primary tracking-[0.3em] mb-2">Acompanhamento em Tempo Real</p>
                 <h1 className="text-4xl lg:text-5xl font-black text-[#0a1e36] uppercase" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
-                  Status do seu <span className="text-primary italic">Bruto</span>
+                  Status do seu <span className="text-primary italic">Pedido</span>
                 </h1>
              </div>
              <div className="bg-slate-50 px-8 py-4 rounded-2xl border border-slate-100 text-right">
@@ -169,10 +169,16 @@ const Tracking = () => {
                         stage.status === 'upcoming' ? 'text-slate-200' : 'text-muted-foreground'
                       }`}>
                         {stage.id === 1 && "Recebemos sua solicitação com sucesso."}
-                        {stage.id === 2 && (order?.status === 'Aguardando Pagamento PIX' ? "Aguardando confirmação do PIX." : "Sua transação foi confirmada. Estamos preparando a documentação.")}
+                        {stage.id === 2 && (
+                          stage.status === 'current' 
+                            ? "Aguardando confirmação do pagamento." 
+                            : stage.status === 'completed' 
+                              ? "Sua transação foi confirmada. Estamos preparando a documentação."
+                              : "Pagamento não concluído."
+                        )}
                         {stage.id === 3 && "O molde industrial está sendo preparado com Plástico ABS."}
                         {stage.id === 4 && "Seu kit será embalado com proteção reforçada para viagem."}
-                        {stage.id === 5 && "O bruto já está de cara nova! Aproveite seu kit."}
+                        {stage.id === 5 && "Seu pedido foi entregue! Aproveite seu kit."}
                       </p>
                     </div>
                   </div>
@@ -185,7 +191,7 @@ const Tracking = () => {
           <div className="mt-12 bg-[#0a1e36] p-10 rounded-[40px] text-white flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
              <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl" />
              <div className="relative">
-                <h4 className="text-2xl font-black uppercase mb-2" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Dúvidas sobre o envio?</h4>
+                <h4 className="text-2xl text-white font-black uppercase mb-2" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Dúvidas sobre o envio?</h4>
                 <p className="text-slate-400 text-sm font-medium">Nosso time de expedição está online para te ajudar.</p>
              </div>
              <a href="https://wa.me/5519983986895" target="_blank" rel="noopener noreferrer" className="bg-[#25D366] text-white px-10 py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:scale-105 transition-all shadow-xl shadow-[#25D366]/20 flex items-center gap-3">
