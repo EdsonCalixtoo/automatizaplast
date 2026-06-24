@@ -21,6 +21,7 @@ export function ProductDetailsModal({ product, isOpen, onOpenChange }: ProductDe
     toast({
       title: "✓ Adicionado ao carrinho",
       description: product.name,
+      duration: 1500,
     });
     onOpenChange(false);
   };

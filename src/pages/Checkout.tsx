@@ -33,12 +33,44 @@ interface OrderData {
   status: string;
 }
 
+const formatCpfCnpj = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length <= 11) {
+    return digits
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})/, "$1-$2")
+      .replace(/(-\d{2})\d+?$/, "$1");
+  } else {
+    return digits
+      .replace(/(\d{2})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1/$2")
+      .replace(/(\d{4})(\d{1,2})/, "$1-$2")
+      .replace(/(-\d{2})\d+?$/, "$1");
+  }
+};
+
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length <= 10) {
+    return digits
+      .replace(/(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{4})(\d)/, "$1-$2")
+      .replace(/(-\d{4})\d+?$/, "$1");
+  } else {
+    return digits
+      .replace(/(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{5})(\d)/, "$1-$2")
+      .replace(/(-\d{4})\d+?$/, "$1");
+  }
+};
+
 const Checkout = () => {
   const { cart, clearCart } = useCart();
   const navigate = useNavigate();
   const [loadingCep, setLoadingCep] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
-  const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [orderDetails, setOrderDetails] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(false);
   const [pixData, setPixData] = useState<{ qr_code: string; qr_code_base64: string } | null>(null);
@@ -186,7 +218,14 @@ const Checkout = () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+    
+    if (name === 'cpf') {
+      value = formatCpfCnpj(value);
+    } else if (name === 'telefone') {
+      value = formatPhone(value);
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
     
     if (name === 'email') {
@@ -274,7 +313,26 @@ const Checkout = () => {
         }
       });
 
-      if (error || (data && data.error)) throw new Error(error?.message || data?.error || "Erro no pagamento");
+      if (error) {
+        if (error.context && typeof error.context.json === 'function') {
+          try {
+            const errorBody = await error.context.json();
+            if (errorBody && errorBody.error) {
+              if (errorBody.error.includes("Invalid user identification number")) {
+                throw new Error("CPF/CNPJ Inválido. Verifique o número digitado.");
+              }
+              throw new Error(errorBody.error);
+            }
+          } catch (e) {}
+        }
+        throw error;
+      }
+      if (data && data.error) {
+         if (data.error.includes("Invalid user identification number")) {
+           throw new Error("CPF/CNPJ Inválido. Verifique o número digitado.");
+         }
+         throw new Error(data.error);
+      }
 
       // No Checkout Transparente, tratamos approved e in_process (pending)
       if (data.status === 'approved' || data.status === 'in_process' || data.status === 'pending') {
@@ -367,7 +425,22 @@ const Checkout = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.context && typeof error.context.json === 'function') {
+          try {
+            const errorBody = await error.context.json();
+            if (errorBody && errorBody.error) {
+              if (errorBody.error.includes("Invalid user identification number")) {
+                throw new Error("CPF/CNPJ Inválido. Verifique o número digitado.");
+              }
+              throw new Error(errorBody.error);
+            }
+          } catch (e) {
+            // Se falhar ao ler o JSON, lança o erro original
+          }
+        }
+        throw error;
+      }
 
       if (data?.qr_code) {
         // Salvar o ID do pagamento para o webhook identificar depois
@@ -399,63 +472,9 @@ const Checkout = () => {
     }
   };
 
-  const EmailPreview = () => (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0a1e36]/90 backdrop-blur-md animate-in fade-in duration-500">
-      <div className="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
-           <div className="flex items-center gap-2">
-             <div className="w-3 h-3 rounded-full bg-red-400"></div>
-             <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-             <div className="w-3 h-3 rounded-full bg-green-400"></div>
-           </div>
-           <span className="text-[10px] font-black uppercase text-slate-400">Preview: E-mail de Confirmação</span>
-           <button onClick={() => setShowEmailPreview(false)} className="text-slate-400 hover:text-primary">✕</button>
-        </div>
-        
-        <div className="p-12 overflow-y-auto text-[#0a1e36]">
-           <div className="text-center mb-12">
-              <div className="bg-[#0a1e36] p-6 rounded-2xl inline-block mb-8">
-                 <img src="/logo.png" className="h-12 mx-auto" />
-              </div>
-              <div className="w-16 h-16 bg-[#25D366]/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle2 className="w-8 h-8 text-[#25D366]" />
-              </div>
-              <h2 className="text-3xl font-black uppercase" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>PEDIDO RECEBIDO!</h2>
-              <p className="text-muted-foreground mt-2 font-medium">Olá, {formData.nome.split(' ')[0]}! Tudo pronto com o seu pedido.</p>
-           </div>
-
-           <div className="bg-slate-50 p-8 rounded-[32px] border border-slate-100 mb-10">
-              <h4 className="text-[10px] font-black uppercase text-primary tracking-widest mb-4">Resumo do Pedido</h4>
-              <div className="space-y-4">
-                 <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Número do Pedido:</span>
-                    <span className="font-bold">{orderDetails?.id || "#884210"}</span>
-                 </div>
-                 <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Status:</span>
-                    <span className="text-orange-500 font-black uppercase text-[10px] bg-orange-50 px-2 py-0.5 rounded-full">Aguardando Pagamento</span>
-                 </div>
-              </div>
-           </div>
-
-           <div className="space-y-6 text-center">
-              <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                Seu kit em **Plástico ABS de Alta Resistência** entrará no cronograma após a confirmação do pagamento.
-                Você pode acompanhar cada etapa pelo nosso portal do cliente.
-              </p>
-              <Link to="/rastreio" className="inline-block bg-primary text-white px-10 py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl shadow-primary/20 hover:scale-105 transition-all">
-                Acompanhar Etapas do Meu Pedido
-              </Link>
-           </div>
-        </div>
-      </div>
-    </div>
-  );
-
   if (orderPlaced) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-        {showEmailPreview && <EmailPreview />}
         
         <div className="max-w-2xl w-full bg-white p-16 rounded-[50px] shadow-2xl border border-slate-100 relative overflow-hidden">
           {/* Decorative element */}
@@ -494,11 +513,8 @@ const Checkout = () => {
             </div>
           )}
 
-          <div className="grid sm:grid-cols-2 gap-4 pt-6">
-             <button onClick={() => setShowEmailPreview(true)} className="bg-slate-50 text-[#0a1e36] h-20 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-all border border-slate-100 flex items-center justify-center gap-3">
-               <Send className="w-4 h-4 text-primary" /> Preview do E-mail
-             </button>
-             <Link to={`/rastreio?orderId=${orderDetails?.id}`} className="bg-primary text-white h-20 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-primary/20 hover:scale-105 transition-all flex items-center justify-center gap-3">
+          <div className="pt-6">
+             <Link to={`/rastreio?orderId=${orderDetails?.id}`} className="w-full bg-primary text-white h-20 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-primary/20 hover:scale-105 transition-all flex items-center justify-center gap-3">
                Acompanhar Etapas <ChevronLeft className="w-4 h-4 rotate-180" />
              </Link>
           </div>

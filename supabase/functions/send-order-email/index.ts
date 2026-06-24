@@ -52,7 +52,7 @@ serve(async (req) => {
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; border-radius: 24px; overflow: hidden; color: #0a1e36;">
         <!-- Header -->
         <div style="background-color: #0a1e36; padding: 40px; text-align: center;">
-          <img src="https://cjyqxjykbpbocjcbrsem.supabase.co/storage/v1/object/public/products/logo.png" alt="Automatiza Plast" style="height: 60px; margin-bottom: 20px;" onerror="this.style.display='none'">
+          <img src="https://automatizaplast.com.br/logo.png" alt="Automatiza Plast" style="height: 60px; margin-bottom: 20px;" onerror="this.style.display='none'">
           <h1 style="color: #00BAF2; margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 4px; font-weight: 900;">Automatiza Plast</h1>
           <p style="color: #fff; margin-top: 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.8;">Tecnologia Industrial em ABS</p>
         </div>
@@ -151,7 +151,7 @@ serve(async (req) => {
       status: emailResponse.ok ? 200 : 400,
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro no envio de e-mail:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

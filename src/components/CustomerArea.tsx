@@ -113,7 +113,7 @@ export function CustomerArea() {
               <Button variant="outline" className="h-12 border-slate-200 font-bold uppercase tracking-widest text-[10px]" asChild>
                 <a href="/rastreio">Meus Pedidos</a>
               </Button>
-              {user.email === "admin@automatiza.com" && (
+              {["admin@automatiza.com", "juninho.caxto@gmail.com"].includes(user.email || "") && (
                 <Button variant="default" className="h-12 bg-[#0a1e36] hover:bg-[#0a1e36]/90 font-bold uppercase tracking-widest text-[10px]" asChild>
                   <a href="/admin">Painel Admin</a>
                 </Button>

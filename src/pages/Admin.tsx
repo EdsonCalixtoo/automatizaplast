@@ -42,7 +42,7 @@ const data = [
   { name: "Dom", vendas: 3490 },
 ];
 
-const ADMIN_EMAIL = "admin@automatiza.com";
+const ADMIN_EMAILS = ["admin@automatiza.com", "juninho.caxto@gmail.com"];
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -55,6 +55,7 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
 
   useEffect(() => {
     checkAdminAccess();
@@ -64,7 +65,7 @@ const Admin = () => {
     setLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
     
-    if (!session || session.user.email !== ADMIN_EMAIL) {
+    if (!session || !session.user.email || !ADMIN_EMAILS.includes(session.user.email)) {
       navigate("/");
       return;
     }
@@ -117,6 +118,19 @@ const Admin = () => {
       const { error } = await supabase.from('products').delete().eq('id', id);
       if (!error) {
         setCurrentProducts(prev => prev.filter(p => p.id !== id));
+      }
+    }
+  };
+
+  const handleDeleteSelectedOrders = async () => {
+    if (selectedOrders.length === 0) return;
+    if (window.confirm(`Tem certeza que deseja excluir ${selectedOrders.length} pedido(s)?`)) {
+      const { error } = await supabase.from('orders').delete().in('id', selectedOrders);
+      if (!error) {
+        setOrders(prev => prev.filter(o => !selectedOrders.includes(o.id)));
+        setSelectedOrders([]);
+      } else {
+        alert("Erro ao excluir pedidos: " + error.message);
       }
     }
   };
@@ -457,6 +471,11 @@ const Admin = () => {
                           className="w-full h-12 bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                         />
                      </div>
+                     {selectedOrders.length > 0 && (
+                       <button onClick={handleDeleteSelectedOrders} className="bg-red-50 p-3 rounded-xl border border-red-200 text-red-500 hover:bg-red-500 hover:text-white transition-colors flex items-center gap-2 font-bold text-xs">
+                          Excluir ({selectedOrders.length})
+                       </button>
+                     )}
                      <button className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-400 hover:text-primary transition-colors">
                         <Filter className="w-5 h-5" />
                      </button>
@@ -465,8 +484,16 @@ const Admin = () => {
                <div className="overflow-x-auto">
                    <div className="min-w-[1200px] p-8">
                      {/* Header Fake Table */}
-                     <div className="flex bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400 px-6 py-4 rounded-xl mb-4">
-                       <div className="w-[12%]">Pedido</div>
+                     <div className="flex bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400 px-6 py-4 rounded-xl mb-4 items-center">
+                       <div className="w-[4%]">
+                         <input 
+                           type="checkbox" 
+                           className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                           checked={orders.length > 0 && selectedOrders.length === orders.length}
+                           onChange={(e) => setSelectedOrders(e.target.checked ? orders.map(o => o.id) : [])}
+                         />
+                       </div>
+                       <div className="w-[8%]">Pedido</div>
                        <div className="w-[20%]">Cliente / Contato</div>
                        <div className="w-[15%]">Documento / CPF</div>
                        <div className="w-[20%]">Endereço de Entrega</div>
@@ -484,8 +511,21 @@ const Admin = () => {
                                 o.client_email?.toLowerCase().includes(term);
                        })).map((order) => (
                          <div key={order.id} className="flex items-center px-6 py-6 bg-white border border-slate-100 rounded-[24px] hover:shadow-xl hover:shadow-slate-200/50 hover:border-primary/20 transition-all group">
+                           {/* Checkbox */}
+                           <div className="w-[4%]">
+                             <input 
+                               type="checkbox" 
+                               className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                               checked={selectedOrders.includes(order.id)}
+                               onChange={(e) => {
+                                 if (e.target.checked) setSelectedOrders(prev => [...prev, order.id]);
+                                 else setSelectedOrders(prev => prev.filter(id => id !== order.id));
+                               }}
+                             />
+                           </div>
+
                            {/* ID */}
-                           <div className="w-[12%]">
+                           <div className="w-[8%]">
                              <div className="flex flex-col">
                                <span className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">ID do Pedido</span>
                                <span className="font-bold text-sm text-[#0a1e36]">{order.id}</span>
@@ -596,8 +636,8 @@ const Admin = () => {
                            <div className="flex flex-col max-w-sm">
                              <span className="font-bold text-sm text-[#0a1e36]">{p.name}</span>
                              <span className="text-[10px] text-muted-foreground truncate">
-                                {p.description || p.desc || "Sem descrição"}
-                              </span>
+                               {p.desc || "Sem descrição"}
+                             </span>
                            </div>
                          </td>
                          <td className="px-8 py-6 font-black text-primary">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.price)}</td>

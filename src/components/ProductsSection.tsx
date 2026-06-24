@@ -32,6 +32,7 @@ const ProductsSection = () => {
     toast({
       title: "✓ Adicionado ao carrinho",
       description: product.name,
+      duration: 1500,
     });
   };
 
